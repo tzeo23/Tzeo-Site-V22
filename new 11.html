@@ -3,85 +3,114 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Τζεο Live Wall</title>
+<title>Τζεο Discord</title>
 
 <style>
 body{
 margin:0;
 font-family:system-ui;
-background:#0b1220;
+background:#0f0f13;
 color:white;
 display:flex;
-justify-content:center;
+height:100vh;
 }
 
-.container{
-width:100%;
-max-width:750px;
-padding:20px;
-}
-
-h1{
-text-align:center;
-}
-
-input,textarea,button{
-width:100%;
-margin-top:10px;
-padding:12px;
-border-radius:10px;
-border:none;
-}
-
-input,textarea{
+.sidebar{
+width:220px;
 background:#111827;
-color:white;
+padding:15px;
 }
 
-textarea{
-height:80px;
-resize:none;
-}
-
-button{
-background:#3b82f6;
-color:white;
+.channel{
+padding:10px;
+margin-top:8px;
+background:#1f2937;
+border-radius:8px;
 cursor:pointer;
 }
 
-.post{
-background:#111827;
-padding:12px;
-border-radius:12px;
-margin-top:10px;
+.channel.active{
+background:#3b82f6;
 }
 
-img{
-width:100%;
+.main{
+flex:1;
+display:flex;
+flex-direction:column;
+}
+
+.top{
+padding:15px;
+background:#111827;
+font-weight:bold;
+}
+
+.chat{
+flex:1;
+overflow-y:auto;
+padding:15px;
+}
+
+.msg{
+background:#1f2937;
+padding:10px;
 border-radius:10px;
-margin-top:10px;
+margin-bottom:10px;
 }
 
 small{
-color:#94a3b8;
-display:block;
-margin-top:5px;
+color:#9ca3af;
+}
+
+.input{
+display:flex;
+gap:10px;
+padding:15px;
+background:#111827;
+}
+
+input{
+flex:1;
+padding:10px;
+border:none;
+border-radius:8px;
+background:#0b1220;
+color:white;
+}
+
+button{
+padding:10px 15px;
+border:none;
+border-radius:8px;
+background:#3b82f6;
+color:white;
+cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="sidebar">
+<h3>Channels</h3>
 
-<h1>🔥 Τζεο Live Wall</h1>
+<div class="channel active" onclick="setRoom('general',this)"># general</div>
+<div class="channel" onclick="setRoom('music',this)"># music</div>
+<div class="channel" onclick="setRoom('friends',this)"># friends</div>
 
+</div>
+
+<div class="main">
+
+<div class="top"># <span id="roomName">general</span></div>
+
+<div id="chat" class="chat"></div>
+
+<div class="input">
 <input id="name" placeholder="Όνομα">
-<textarea id="text" placeholder="Γράψε κάτι..."></textarea>
-<input id="img" placeholder="Image URL (προαιρετικό)">
-<button onclick="send()">Δημοσίευση</button>
-
-<div id="feed"></div>
+<input id="text" placeholder="Μήνυμα...">
+<button onclick="send()">Send</button>
+</div>
 
 </div>
 
@@ -93,8 +122,9 @@ getFirestore,
 collection,
 addDoc,
 onSnapshot,
-orderBy,
 query,
+where,
+orderBy,
 serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -107,46 +137,71 @@ projectId: "YOUR_ID"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* REAL TIME FEED */
-const q = query(collection(db,"posts"),orderBy("time","desc"));
+let room = "general";
 
-onSnapshot(q,(snap)=>{
-let feed = document.getElementById("feed");
-feed.innerHTML="";
+/* CHANGE ROOM */
+window.setRoom = function(r,el){
 
-snap.forEach(doc=>{
-let d = doc.data();
+room = r;
+document.getElementById("roomName").innerText = r;
 
-feed.innerHTML += `
-<div class="post">
-<b>${d.name}</b>
-<div>${d.text}</div>
-${d.img ? `<img src="${d.img}">` : ""}
-<small>${new Date(d.time?.seconds*1000).toLocaleString()}</small>
-</div>
-`;
-});
-});
+document.querySelectorAll(".channel")
+.forEach(c=>c.classList.remove("active"));
 
-/* SEND POST */
+el.classList.add("active");
+
+load();
+}
+
+/* SEND MESSAGE */
 window.send = async function(){
 
-let name = document.getElementById("name").value || "Ανώνυμος";
+let name = document.getElementById("name").value || "Anon";
 let text = document.getElementById("text").value;
-let img = document.getElementById("img").value;
 
-if(!text && !img) return;
+if(!text) return;
 
-await addDoc(collection(db,"posts"),{
+await addDoc(collection(db,"messages"),{
 name,
 text,
-img,
+room,
 time:serverTimestamp()
 });
 
 document.getElementById("text").value="";
-document.getElementById("img").value="";
 }
+
+/* LOAD CHAT */
+function load(){
+
+const q = query(
+collection(db,"messages"),
+where("room","==",room),
+orderBy("time")
+);
+
+onSnapshot(q,(snap)=>{
+
+let chat = document.getElementById("chat");
+chat.innerHTML="";
+
+snap.forEach(doc=>{
+let d = doc.data();
+
+chat.innerHTML += `
+<div class="msg">
+<b>${d.name}</b>
+<div>${d.text}</div>
+<small>${new Date(d.time?.seconds*1000).toLocaleString()}</small>
+</div>
+`;
+});
+
+});
+
+}
+
+load();
 
 </script>
 
