@@ -3,114 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Τζεο Discord</title>
+<title>Τζεο Online Chat</title>
 
 <style>
 body{
 margin:0;
 font-family:system-ui;
-background:#0f0f13;
+background:#0b1220;
 color:white;
 display:flex;
-height:100vh;
+justify-content:center;
 }
 
-.sidebar{
-width:220px;
-background:#111827;
-padding:15px;
+.container{
+width:100%;
+max-width:700px;
+padding:20px;
 }
 
-.channel{
-padding:10px;
-margin-top:8px;
-background:#1f2937;
-border-radius:8px;
-cursor:pointer;
+h1{
+text-align:center;
 }
 
-.channel.active{
-background:#3b82f6;
-}
-
-.main{
-flex:1;
-display:flex;
-flex-direction:column;
-}
-
-.top{
-padding:15px;
-background:#111827;
-font-weight:bold;
-}
-
-.chat{
-flex:1;
-overflow-y:auto;
-padding:15px;
-}
-
-.msg{
-background:#1f2937;
-padding:10px;
+input,button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
 border-radius:10px;
-margin-bottom:10px;
-}
-
-small{
-color:#9ca3af;
-}
-
-.input{
-display:flex;
-gap:10px;
-padding:15px;
-background:#111827;
 }
 
 input{
-flex:1;
-padding:10px;
-border:none;
-border-radius:8px;
-background:#0b1220;
+background:#111827;
 color:white;
 }
 
 button{
-padding:10px 15px;
-border:none;
-border-radius:8px;
 background:#3b82f6;
 color:white;
 cursor:pointer;
+}
+
+.msg{
+background:#111827;
+padding:10px;
+margin-top:10px;
+border-radius:10px;
+}
+
+small{
+color:#94a3b8;
 }
 </style>
 </head>
 
 <body>
 
-<div class="sidebar">
-<h3>Channels</h3>
+<div class="container">
 
-<div class="channel active" onclick="setRoom('general',this)"># general</div>
-<div class="channel" onclick="setRoom('music',this)"># music</div>
-<div class="channel" onclick="setRoom('friends',this)"># friends</div>
+<h1>💬 Τζεο Online Chat</h1>
 
-</div>
-
-<div class="main">
-
-<div class="top"># <span id="roomName">general</span></div>
-
-<div id="chat" class="chat"></div>
-
-<div class="input">
 <input id="name" placeholder="Όνομα">
-<input id="text" placeholder="Μήνυμα...">
+<input id="text" placeholder="Γράψε μήνυμα">
 <button onclick="send()">Send</button>
-</div>
+
+<div id="chat"></div>
 
 </div>
 
@@ -123,7 +80,6 @@ collection,
 addDoc,
 onSnapshot,
 query,
-where,
 orderBy,
 serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -137,21 +93,26 @@ projectId: "YOUR_ID"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let room = "general";
+/* REAL TIME LISTENER */
+const q = query(collection(db,"messages"),orderBy("time"));
 
-/* CHANGE ROOM */
-window.setRoom = function(r,el){
+onSnapshot(q,(snap)=>{
 
-room = r;
-document.getElementById("roomName").innerText = r;
+document.getElementById("chat").innerHTML="";
 
-document.querySelectorAll(".channel")
-.forEach(c=>c.classList.remove("active"));
+snap.forEach(doc=>{
+let d = doc.data();
 
-el.classList.add("active");
+document.getElementById("chat").innerHTML += `
+<div class="msg">
+<b>${d.name}</b><br>
+${d.text}<br>
+<small>${new Date(d.time?.seconds*1000).toLocaleString()}</small>
+</div>
+`;
+});
 
-load();
-}
+});
 
 /* SEND MESSAGE */
 window.send = async function(){
@@ -164,44 +125,11 @@ if(!text) return;
 await addDoc(collection(db,"messages"),{
 name,
 text,
-room,
 time:serverTimestamp()
 });
 
 document.getElementById("text").value="";
 }
-
-/* LOAD CHAT */
-function load(){
-
-const q = query(
-collection(db,"messages"),
-where("room","==",room),
-orderBy("time")
-);
-
-onSnapshot(q,(snap)=>{
-
-let chat = document.getElementById("chat");
-chat.innerHTML="";
-
-snap.forEach(doc=>{
-let d = doc.data();
-
-chat.innerHTML += `
-<div class="msg">
-<b>${d.name}</b>
-<div>${d.text}</div>
-<small>${new Date(d.time?.seconds*1000).toLocaleString()}</small>
-</div>
-`;
-});
-
-});
-
-}
-
-load();
 
 </script>
 
